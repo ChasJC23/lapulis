@@ -20,6 +20,11 @@ class Manager {
     private previewDisplay: Display;
     private lightShowPages: Tuple<LightShowPage, 8> = constructTuple(8, () => new LightShowPage());
     private selectedPageNum: number = 1;
+
+    /**
+     * selected display mode for the {@link launchpad}.
+     * @private
+     */
     private lpMode: LaunchpadMode = LaunchpadMode.LAYOUT;
     private holdingControl: number = 0;
     private selectedPadNum: number = 11;
@@ -91,12 +96,23 @@ class Manager {
         this.transparentRadio.oninput = () => this.transparent = true;
         this.applyLaunchpadEvents();
         this.updateFramePickers();
+        this.highlightSelectedPage();
+        this.highlightSelectedPad();
     }
 
+    /**
+     * Reconnects to the {@link launchpad} and {@link applyLaunchpadEvents reapplies events}.
+     * @public
+     */
     public async reconnect(): Promise<void> {
         this.launchpad = await Launchpad.connectToLaunchpad({ sysex: true });
         this.applyLaunchpadEvents();
     }
+
+    /**
+     * Adds the necessary event listeners to the {@link launchpad} and {@link updateLaunchpadDisplay updates its display}.
+     * @private
+     */
     private applyLaunchpadEvents(): void {
         this.launchpad.fillFromPalette(0);
         this.launchpad.addEventListener("controlPress", (e: CustomEvent<ControlRowNote>) => this.onLaunchpadControlPress(e.detail));
@@ -105,27 +121,47 @@ class Manager {
         this.launchpad.addEventListener("selectorRelease", (e: CustomEvent<SelectorColNote>) => this.onLaunchpadSelectorRelease(e.detail));
         this.launchpad.addEventListener("padPress", (e: CustomEvent<number>) => this.onLaunchpadPadPress(e.detail));
         this.launchpad.addEventListener("padRelease", (e: CustomEvent<number>) => this.onLaunchpadPadRelease(e.detail));
-        this.highlightSelectedPage();
-        this.highlightSelectedPad();
-        this.updateLaunchpadLayoutArrows();
-        this.updateAnimationLayout();
+        this.updateLaunchpadDisplay();
     }
 
+    /**
+     * Event listener run when a pad button on the layout display is clicked.
+     * @param element - The element being clicked on
+     * @param note - The note of the corresponding pad button on the Launchpad
+     * @private
+     */
     private padLayoutOnClick(element: SVGElement, note: number): void {
         this.switchSelectedPad(note);
     }
+
+    /**
+     * Highlights the selected pad in the layout display.
+     * If the {@link lpMode display mode} is {@link LaunchpadMode.LAYOUT}, {@link highlightLaunchpadSelectedPad} is called.
+     * @private
+     */
     private highlightSelectedPad(): void {
         this.layoutDisplay.setBorderColour(this.selectedPadNum, "yellow");
         if (this.lpMode === LaunchpadMode.LAYOUT) {
             this.highlightLaunchpadSelectedPad();
         }
     }
+
+    /**
+     * Highlights the selected pad on the {@link launchpad}.
+     * @private
+     */
     private highlightLaunchpadSelectedPad(): void {
         if (this.selectedPage.animationExistsAt(this.selectedPadNum))
             this.launchpad.colourFromPalette(this.selectedPadNum, Manager.selectedPopulatedPadColour);
         else
             this.launchpad.colourFromPalette(this.selectedPadNum, Manager.selectedEmptyPadColour);
     }
+
+    /**
+     * Resets the selected pad to black on the {@link layoutDisplay layout display}
+     * and on the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.LAYOUT}.
+     * @private
+     */
     private hideSelectedPad(): void {
         this.layoutDisplay.setBorderColour(this.selectedPadNum, "dimgrey");
         if (this.lpMode === LaunchpadMode.LAYOUT) {
@@ -135,6 +171,13 @@ class Manager {
                 this.launchpad.colourFromPalette(this.selectedPadNum, 0);
         }
     }
+
+    /**
+     * Sets {@link selectedPadNum} to the given value, and updates the corresponding displays; those being
+     * {@link layoutDisplay} and the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.LAYOUT}.
+     * @param note - the note value locating the pad to select.
+     * @private
+     */
     private switchSelectedPad(note: number): void {
         this.hideSelectedPad();
         this.selectedPadNum = note;
@@ -143,6 +186,13 @@ class Manager {
         this.highlightSelectedPad();
         this.updateFramePickers();
     }
+
+    /**
+     * Displays the currently selected frame {@link selectedFrame} on the {@link previewDisplay}
+     * and the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.EDITOR}.
+     * Related UI elements like {@link frameDelayPicker} are also updated.
+     * @private
+     */
     private updateFrame(): void {
         let frame = Math.min(this.selectedFrame, this.selectedAnimation.frameCount - 1);
         let actions = this.selectedAnimation.getFrame(frame);
@@ -157,6 +207,13 @@ class Manager {
         }
         this.frameDelayPicker.value = this.selectedAnimation.getFrameDuration(frame).toString();
     }
+
+    /**
+     * Displays a single pad from the currently selected frame {@link selectedFrame} to the {@link previewDisplay}
+     * and the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.EDITOR}.
+     * @param note - the note value indicating the pad to update.
+     * @private
+     */
     private updateFrameAtNote(note: number): void {
         let action = this.selectedAnimation.getNote(note, this.selectedFrame);
         this.previewDisplay.performAction(action);
@@ -164,6 +221,14 @@ class Manager {
             this.launchpad.performAction(action);
         }
     }
+
+    /**
+     * Sets {@link selectedFrame} to the given value, and updates the limits for the frame selection UI elements {@link frameSlider} and {@link framePicker}.
+     * Used when the currently selected animation {@link selectedAnimation} is changed.
+     * A call to {@link updateFrame} is also made to update the displayed frame.
+     * @param frame - the updated value for the {@link selectedFrame}.
+     * @private
+     */
     private updateFramePickers(frame: number = 0): void {
         this.frameSlider.min = "0";
         this.frameSlider.max = this.selectedAnimation.frameCount.toString();
@@ -174,12 +239,20 @@ class Manager {
         this.selectedFrame = frame;
         this.updateFrame();
     }
-    private onFrameChange(value: number): void {
-        this.selectedFrame = value;
-        this.frameSlider.value = value.toString();
-        this.framePicker.value = value.toString();
+
+    /**
+     * Sets {@link selectedFrame} to the given value, and updates the corresponding UI elements {@link frameSlider} and {@link framePicker}.
+     * A call to {@link updateFrame} is also made to update the displayed frame.
+     * @param frame - the updated value for the {@link selectedFrame}.
+     * @private
+     */
+    private onFrameChange(frame: number): void {
+        this.selectedFrame = frame;
+        this.frameSlider.value = frame.toString();
+        this.framePicker.value = frame.toString();
         this.updateFrame();
     }
+
     private highlightSelectedPage(): void {
         this.layoutDisplay.setColour(Launchpad.sessionNoteFromPos(9, this.selectedPageNum), "orange");
         if (this.lpMode === LaunchpadMode.LAYOUT) {
@@ -285,7 +358,7 @@ class Manager {
         }
         if (this.performControlAction()) return;
         if (this.lpMode === LaunchpadMode.LAYOUT) {
-            this.defaultShiftAni(note);
+            this.defaultShiftSelectedPad(note);
         }
         if (this.lpMode === LaunchpadMode.COLOUR_PICKER) {
             this.shiftColourPageBias(note);
@@ -319,16 +392,16 @@ class Manager {
                 this.updateLaunchpadDisplay();
                 return this.controlStateChange = true;
             case 0b10001000:
-                this.defaultShiftAni(ControlRowNote.UP);
+                this.defaultShiftSelectedPad(ControlRowNote.UP);
                 return this.controlStateChange = true;
             case 0b01001000:
-                this.defaultShiftAni(ControlRowNote.DOWN);
+                this.defaultShiftSelectedPad(ControlRowNote.DOWN);
                 return this.controlStateChange = true;
             case 0b00101000:
-                this.defaultShiftAni(ControlRowNote.LEFT);
+                this.defaultShiftSelectedPad(ControlRowNote.LEFT);
                 return this.controlStateChange = true;
             case 0b00011000:
-                this.defaultShiftAni(ControlRowNote.RIGHT);
+                this.defaultShiftSelectedPad(ControlRowNote.RIGHT);
                 return this.controlStateChange = true;
             case 0b00100001:
                 this.updateFramePickers(Math.max(this.selectedFrame - 1, 0));
@@ -343,7 +416,7 @@ class Manager {
         }
         return false;
     }
-    private defaultShiftAni(direction: ControlRowNote): void {
+    private defaultShiftSelectedPad(direction: ControlRowNote): void {
         switch (direction) {
             case ControlRowNote.UP:
                 if (this.canShiftSelectedPad([0, 1]))
