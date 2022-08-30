@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Launchpad Interface</title>
+    <style>
+        table { background-color: rgb(32, 32, 32); }
+        tr { background-color: rgb(32, 32, 32); }
+        label { color: white; font-family: sans-serif }
+    </style>
+</head>
+<body style="display: grid; grid-template-columns: fit-content(100%) auto fit-content(100%); background-color: black">
+    <div>
+        <table>
+        </table>
+    </div>
+    <div>
+        <button onclick="manager.reconnect()" style="font-size: 24pt">connect</button>
+        <br />
+        <label for="frame_slider" id="slider_label">Current Frame</label>
+        <br />
+        <input type="range" id="frame_slider" onchange="document.getElementById('frame_picker').value = this.value">
+        <input type="number" id="frame_picker" onchange="document.getElementById('frame_slider').value = this.value">
+        <br />
+        <input type="radio" id="using_colour" name="using_colour">
+        <label for="using_colour">Colour</label>
+        <br />
+        <input type="radio" id="transparent" name="using_colour">
+        <label for="transparent">No Colour</label>
+        <br />
+        <input type="color" id="colour_picker">
+        <label for="colour_picker" id="colour_label">Selected Colour</label>
+        <br />
+        <input type="checkbox" id="use_sysex">
+        <label for="use_sysex">Use Sysex</label>
+        <br />
+        <label for="frame_delay">Frame Delay</label>
+        <input type="number" id="frame_delay">
+        <br />
+        <button style="font-size: 24pt" onclick="download(JSON.stringify(manager.lightShowPages), 'lp.json', 'text/plain')">Save</button>
+    </div>
+    <div>
+        <table>
+        </table>
+    </div>
+    <br />
+    <input style="font-size: 24pt" type="file" accept="application/json" onchange="
+        const reader = new FileReader();
+        reader.onload = (evt) => manager.loadFile(evt.target.result);
+        reader.readAsText(this.files[0]);
+">
+    <svg visibility="hidden" id="circle_button" width="80" height="80">
+        <circle r="28" cx="40" cy="40" stroke="dimgrey" stroke-width="4" fill="black" />
+        <path d="M 12 40 A 28 28 0 0 1 40 12 V 40 Z" fill="dimgrey" class="transparency_indicator" visibility="hidden" />
+        <path d="M 68 40 A 28 28 0 0 1 40 68 V 40 Z" fill="dimgrey" class="transparency_indicator" visibility="hidden" />
+    </svg>
+    <svg visibility="hidden" id="square_button" width="80" height="80">
+        <rect width="72" height="72" x="4" y="4" stroke="dimgrey" stroke-width="4" fill="black" />
+        <rect width="36" height="36" x="4" y="4" fill="dimgrey" class="transparency_indicator" visibility="hidden" />
+        <rect width="36" height="36" x="40" y="40" fill="dimgrey" class="transparency_indicator" visibility="hidden" />
+    </svg>
+    <a id="a" hidden></a>
+    <script src="./lp.js"></script>
+    <script>
+        function download(text, name, type) {
+            const a = document.getElementById("a");
+            const file = new Blob([text], {type: type});
+            a.href = URL.createObjectURL(file);
+            a.download = name;
+            a.click();
+        }
+        let tables = document.getElementsByTagName("table");
+        let leftDisplay = new Display("layout", tables[0]);
+        let rightDisplay = new Display("preview", tables[1]);
+        let frameSlider = document.getElementById("frame_slider");
+        let framePicker = document.getElementById("frame_picker");
+        let colourPicker = document.getElementById("colour_picker");
+        let useSysexCheckbox = document.getElementById("use_sysex");
+        let usingColourRadio = document.getElementById("using_colour");
+        let transparentRadio = document.getElementById("transparent");
+        let frameDelayPicker = document.getElementById("frame_delay");
+        delete globalThis.tables;
+        let manager;
+        (async () => {
+            manager = new Manager(await Launchpad.connectToLaunchpad({ sysex: true }),
+                leftDisplay, rightDisplay,
+                frameSlider, framePicker,
+                colourPicker, useSysexCheckbox,
+                usingColourRadio, transparentRadio,
+                frameDelayPicker
+            );
+        })();
+    </script>
+</body>
+</html>
