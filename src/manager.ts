@@ -126,8 +126,9 @@ class Manager {
 
     /**
      * Event listener run when a pad button on the layout display is clicked.
-     * @param element - The element being clicked on
-     * @param note - The note of the corresponding pad button on the Launchpad
+     * Calls {@link switchSelectedPad} to update the selected pad to the given value.
+     * @param element - The element being clicked on (unused).
+     * @param note - The note of the corresponding pad button on the {@link launchpad}.
      * @private
      */
     private padLayoutOnClick(element: SVGElement, note: number): void {
@@ -159,7 +160,7 @@ class Manager {
 
     /**
      * Resets the selected pad to black on the {@link layoutDisplay layout display}
-     * and on the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.LAYOUT}.
+     * and on the {@link launchpad} if {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
      * @private
      */
     private hideSelectedPad(): void {
@@ -174,7 +175,7 @@ class Manager {
 
     /**
      * Sets {@link selectedPadNum} to the given value, and updates the corresponding displays; those being
-     * {@link layoutDisplay} and the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.LAYOUT}.
+     * {@link layoutDisplay} and the {@link launchpad} if {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
      * @param note - the note value locating the pad to select.
      * @private
      */
@@ -189,7 +190,7 @@ class Manager {
 
     /**
      * Displays the currently selected frame {@link selectedFrame} on the {@link previewDisplay}
-     * and the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.EDITOR}.
+     * and the {@link launchpad} if {@link lpMode} is set to {@link LaunchpadMode.EDITOR}.
      * Related UI elements like {@link frameDelayPicker} are also updated.
      * @private
      */
@@ -210,7 +211,7 @@ class Manager {
 
     /**
      * Displays a single pad from the currently selected frame {@link selectedFrame} to the {@link previewDisplay}
-     * and the {@link launchpad} if the {@link lpMode display mode} is set to {@link LaunchpadMode.EDITOR}.
+     * and the {@link launchpad} if {@link lpMode} is set to {@link LaunchpadMode.EDITOR}.
      * @param note - the note value indicating the pad to update.
      * @private
      */
@@ -253,18 +254,38 @@ class Manager {
         this.updateFrame();
     }
 
+    /**
+     * Highlights the currently selected animation page indicator to the {@link layoutDisplay}
+     * and the {@link launchpad} if {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
+     * The currently selected page populates the right side column of circular buttons.
+     * @private
+     */
     private highlightSelectedPage(): void {
         this.layoutDisplay.setColour(Launchpad.sessionNoteFromPos(9, this.selectedPageNum), "orange");
         if (this.lpMode === LaunchpadMode.LAYOUT) {
             this.launchpad.colourFromPalette(Launchpad.sessionNoteFromPos(9, this.selectedPageNum), Manager.selectedPageColour);
         }
     }
+
+    /**
+     * Hides the currently selected animation page indicator on the {@link layoutDisplay}
+     * and the {@link launchpad} if {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
+     * The currently selected page indicator populates the right side column of circular buttons.
+     * @private
+     */
     private hideSelectedPage(): void {
         this.layoutDisplay.setColour(Launchpad.sessionNoteFromPos(9, this.selectedPageNum), "black");
         if (this.lpMode === LaunchpadMode.LAYOUT) {
             this.launchpad.colourFromPalette(Launchpad.sessionNoteFromPos(9, this.selectedPageNum), 0);
         }
     }
+
+    /**
+     * Sets {@link selectedPadNum} to the given page number and updates {@link layoutDisplay}.
+     * If {@link lpMode} is set to {@link LaunchpadMode.LAYOUT} then the {@link launchpad} display is also updated.
+     * @param newPage - The new page to focus on,
+     * @private
+     */
     private switchSelectedPage(newPage: SelectorColNote): void {
         this.hideSelectedPage();
         this.selectedPageNum = newPage;
@@ -275,25 +296,49 @@ class Manager {
             this.updateDisplayAnimationLayout();
         this.updateFramePickers();
     }
+
+    /**
+     * Event listener run when one of the circular buttons on the right side of {@link layoutDisplay} is clicked.
+     * Calls {@link switchSelectedPage} to update the selected page to what corresponds to the given note.
+     * @param element - The element being clicked on (unused).
+     * @param note - The note of the corresponding pad button on the {@link launchpad}.
+     * @private
+     */
     private selectionLayoutOnClick(element: SVGElement, note: SelectorColNote): void {
         this.switchSelectedPage((note - 9) / 10);
     }
+
+    /**
+     * Event listener run when one of the buttons on {@link previewDisplay} is clicked.
+     * Calls {@link paintNote} to make the relevant edit to the current animation.
+     * @param element - The element being clicked on (unused).
+     * @param note - The note of the corresponding pad button on the {@link launchpad}.
+     * @private
+     */
     private previewOnClick(element: SVGElement, note: number): void {
         this.paintNote(note);
     }
+
+    /**
+     * Changes the action performed at the pad corresponding to the given note on {@link selectedAnimation} at frame {@link selectedFrame}.
+     * The chosen action is determined by instance attributes {@link transparent}, {@link useSysex}, {@link selectedSysexColour}, {@link selectedPaletteColour}.
+     * @param note - The note corresponding to the pad to update.
+     * @private
+     */
     private paintNote(note: number): void {
-        if (this.selectedFrame === this.selectedAnimation.frameCount) {
-            this.selectedAnimation.addFrame(+this.frameDelayPicker.value);
-            this.updateFramePickers(this.selectedFrame);
-            if (this.selectedFrame === 0)
-                this.updateDisplayAnimationLayout();
-        }
+        // removing actions at the given note
         if (this.transparent) {
-            if (this.selectedFrame === this.selectedAnimation.frameCount) {
+
+            // if we're at the null frame, there's nothing to remove
+            if (this.selectedFrame === this.selectedAnimation.frameCount)
                 return;
-            }
+
             this.selectedAnimation.removeActionOnFrameAt(note, this.selectedFrame);
+
+            // if we've removed an action from the final frame, we need to check whether to remove the frame entirely
             if (this.selectedFrame === this.selectedAnimation.frameCount - 1) {
+
+                // remove all empty frames
                 while (this.selectedAnimation.getFrameDelta(this.selectedFrame).length === 0) {
                     this.selectedAnimation.removeFrame();
                     this.selectedFrame--;
@@ -305,11 +350,18 @@ class Manager {
                 }
                 this.updateFramePickers(this.selectedFrame);
             }
-        } else {
+        }
+        // adding actions to the given note
+        else {
+
+            // if we're at the null frame, we need to create it first
             if (this.selectedFrame === this.selectedAnimation.frameCount) {
                 this.selectedAnimation.addFrame(+this.frameDelayPicker.value);
                 this.updateFramePickers(this.selectedFrame);
+                if (this.selectedFrame === 0)
+                    this.updateDisplayAnimationLayout();
             }
+
             this.selectedAnimation.putActionOnFrame(
                 this.useSysex ?
                     {
@@ -329,6 +381,15 @@ class Manager {
         }
         this.updateFrameAtNote(note);
     }
+
+    /**
+     * Event listener run when one of the top row buttons on the {@link launchpad} is pressed.
+     * Manages control sequences on the {@link launchpad} through {@link performControlAction},
+     * otherwise calling {@link defaultShiftSelectedPad} or {@link shiftColourPageBias} if {@link lpMode} is
+     * {@link LaunchpadMode.LAYOUT} or {@link LaunchpadMode.COLOUR_PICKER} respectively.
+     * @param note - The note of the pressed button.
+     * @private
+     */
     private onLaunchpadControlPress(note: ControlRowNote): void {
         switch (note) {
             case ControlRowNote.MIXER:
@@ -356,7 +417,9 @@ class Manager {
                 this.holdingControl |= 0b10000000;
                 break;
         }
+
         if (this.performControlAction()) return;
+
         if (this.lpMode === LaunchpadMode.LAYOUT) {
             this.defaultShiftSelectedPad(note);
         }
@@ -364,6 +427,13 @@ class Manager {
             this.shiftColourPageBias(note);
         }
     }
+
+    /**
+     * Shifts {@link colourBias} by a fixed amount determined by the notes of the directional buttons on the {@link launchpad}.
+     * Calls {@link updateLaunchpadDisplay} under the assumption {@link lpMode} is {@link LaunchpadMode.COLOUR_PICKER}.
+     * @param direction - The note of the directional button indicating the direction to shift in.
+     * @private
+     */
     private shiftColourPageBias(direction: ControlRowNote) {
         switch (direction) {
             case ControlRowNote.DOWN:
@@ -381,6 +451,12 @@ class Manager {
         }
         this.updateLaunchpadDisplay();
     }
+
+    /**
+     * Attempts to perform a control sequence based on the value of {@link holdingControl}.
+     * Returns whether an operation was successfully performed or not, updating {@link controlStateChange} if so.
+     * @private
+     */
     private performControlAction(): boolean {
         switch (this.holdingControl) {
             case 0b00001010:
@@ -416,6 +492,13 @@ class Manager {
         }
         return false;
     }
+
+    /**
+     * Uses {@link shiftSelectedPad} to shift {@link selectedPadNum} by a fixed vector
+     * determined by the notes of the directional buttons on the {@link launchpad}.
+     * @param direction - The note of the directional button indicating the direction to shift in.
+     * @private
+     */
     private defaultShiftSelectedPad(direction: ControlRowNote): void {
         switch (direction) {
             case ControlRowNote.UP:
@@ -436,6 +519,7 @@ class Manager {
                 break;
         }
     }
+
     private updateLaunchpadDisplay(): void {
         switch (this.lpMode) {
             case LaunchpadMode.LAYOUT:
@@ -460,6 +544,7 @@ class Manager {
                 break;
         }
     }
+
     private updateAnimationLayout(): void {
         let animationLayout = this.selectedPage.existingAnimationLayout();
         for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
@@ -474,6 +559,7 @@ class Manager {
             this.highlightLaunchpadSelectedPad();
         }
     }
+
     private updateLaunchpadAnimationLayout(): void {
         let animationLayout = this.selectedPage.existingAnimationLayout();
         for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
@@ -484,6 +570,7 @@ class Manager {
             this.highlightLaunchpadSelectedPad();
         }
     }
+
     private updateDisplayAnimationLayout(): void {
         let animationLayout = this.selectedPage.existingAnimationLayout();
         for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
@@ -493,6 +580,7 @@ class Manager {
                 this.layoutDisplay.setColour(Launchpad.sessionNoteFromPos(x + 1, y + 1), "black");
         }
     }
+
     private updateLaunchpadLayoutArrows(): void {
         if (this.canShiftSelectedPad([0, 1]))
             this.launchpad.colourFromPalette(ControlRowNote.UP, Manager.arrowColour);
@@ -511,6 +599,7 @@ class Manager {
         else
             this.launchpad.colourFromPalette(ControlRowNote.RIGHT, 0);
     }
+
     private updateLaunchpadColourArrows(): void {
         if (this.colourBias > 0) {
             this.launchpad.colourFromPalette(ControlRowNote.LEFT, Manager.arrowColour);
@@ -527,6 +616,7 @@ class Manager {
             this.launchpad.colourFromPalette(ControlRowNote.UP, 0);
         }
     }
+
     private onLaunchpadControlRelease(note: ControlRowNote): void {
         switch (note) {
             case ControlRowNote.MIXER:
@@ -561,6 +651,7 @@ class Manager {
             this.controlStateChange = false;
         }
     }
+
     private onLaunchpadSelectorPress(note: SelectorColNote): void {
         if (this.lpMode === LaunchpadMode.LAYOUT || this.lpMode === LaunchpadMode.PREVIEW) {
             this.switchSelectedPage((note - 9) / 10);
@@ -572,11 +663,13 @@ class Manager {
             this.updateLaunchpadDisplay();
         }
     }
+
     private onLaunchpadSelectorRelease(note: SelectorColNote): void {
         if (this.lpMode === LaunchpadMode.EDITOR) {
             this.paintNote(note);
         }
     }
+
     private onLaunchpadPadPress(note: number): void {
         if (this.lpMode === LaunchpadMode.LAYOUT) {
             if (note === this.selectedPadNum) {
@@ -599,12 +692,14 @@ class Manager {
             this.updateLaunchpadDisplay();
         }
     }
+
     private onLaunchpadPadRelease(note: number): void {
         if (this.lpMode === LaunchpadMode.EDITOR && !this.padStateChange) {
             this.paintNote(note);
         }
         this.padStateChange = false;
     }
+
     private playAnimation(note: number): void {
         let animation = this.selectedPage.getAnimation(...Launchpad.posFromSessionNote(note));
         let timestamp = 0;
@@ -616,6 +711,7 @@ class Manager {
             console.log(...frame);
         }
     }
+
     private shiftSelectedPad(vector: [number, number]): void {
         const newSelectedPad = Launchpad.addVectorOnPad(this.selectedPadNum, vector);
         if (Launchpad.onPad(newSelectedPad))
@@ -623,10 +719,12 @@ class Manager {
         else
             throw RangeError("Invalid Vector!");
     }
+
     private canShiftSelectedPad(vector: [number, number]): boolean {
         const newSelectedPad = Launchpad.addVectorOnPad(this.selectedPadNum, vector);
         return Launchpad.onPad(newSelectedPad);
     }
+
 
     private updateColour(colour: [number, number, number]): void;
     private updateColour(colour: number): void;
