@@ -90,8 +90,8 @@ class Manager {
         this.framePicker.oninput = () => this.onFrameChange(+this.framePicker.value);
         this.frameSlider.oninput = () => this.onFrameChange(+this.frameSlider.value);
         this.colourPicker.oninput = () => this.updateColour(this.colourPicker.value);
-        this.frameDelayPicker.oninput = () => this.updateFrameDelay(+this.frameDelayPicker.value);
-        this.useSysexCheckbox.oninput = () => this.updateSysexCheckmark(this.useSysexCheckbox.checked);
+        this.frameDelayPicker.oninput = () => this.setFrameDuration(+this.frameDelayPicker.value);
+        this.useSysexCheckbox.oninput = () => this.setUseSysex(this.useSysexCheckbox.checked);
         this.usingColourRadio.oninput = () => this.transparent = false;
         this.transparentRadio.oninput = () => this.transparent = true;
         this.applyLaunchpadEvents();
@@ -520,6 +520,10 @@ class Manager {
         }
     }
 
+    /**
+     * Updates the visuals displayed on the {@link launchpad} to correspond with the current value of {@link lpMode}.
+     * @private
+     */
     private updateLaunchpadDisplay(): void {
         switch (this.lpMode) {
             case LaunchpadMode.LAYOUT:
@@ -545,6 +549,11 @@ class Manager {
         }
     }
 
+    /**
+     * Updates both the {@link launchpad} and {@link layoutDisplay} to preview the current animation layout.
+     * Assumes {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
+     * @private
+     */
     private updateAnimationLayout(): void {
         let animationLayout = this.selectedPage.existingAnimationLayout();
         for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
@@ -560,6 +569,11 @@ class Manager {
         }
     }
 
+    /**
+     * Updates just the {@link launchpad} to preview the current animation layout.
+     * Assumes {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
+     * @private
+     */
     private updateLaunchpadAnimationLayout(): void {
         let animationLayout = this.selectedPage.existingAnimationLayout();
         for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
@@ -571,6 +585,10 @@ class Manager {
         }
     }
 
+    /**
+     * Updates just the {@link layoutDisplay} to preview the current animation layout.
+     * @private
+     */
     private updateDisplayAnimationLayout(): void {
         let animationLayout = this.selectedPage.existingAnimationLayout();
         for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
@@ -581,6 +599,12 @@ class Manager {
         }
     }
 
+    /**
+     * Updates the arrows highlighted on the {@link launchpad} to indicate
+     * whether {@link selectedPadNum} can be shifted in each direction.
+     * Assumes {@link lpMode} is set to {@link LaunchpadMode.LAYOUT}.
+     * @private
+     */
     private updateLaunchpadLayoutArrows(): void {
         if (this.canShiftSelectedPad([0, 1]))
             this.launchpad.colourFromPalette(ControlRowNote.UP, Manager.arrowColour);
@@ -600,6 +624,12 @@ class Manager {
             this.launchpad.colourFromPalette(ControlRowNote.RIGHT, 0);
     }
 
+    /**
+     * Updates the arrows highlighted on the {@link launchpad} to indicate
+     * whether {@link colourBias} can be shifted in each direction.
+     * Assumes {@link lpMode} is set to {@link LaunchpadMode.COLOUR_PICKER}.
+     * @private
+     */
     private updateLaunchpadColourArrows(): void {
         if (this.colourBias > 0) {
             this.launchpad.colourFromPalette(ControlRowNote.LEFT, Manager.arrowColour);
@@ -617,6 +647,13 @@ class Manager {
         }
     }
 
+    /**
+     * Event listener run when one of the top row buttons on the {@link launchpad} is released.
+     * Updates {@link holdingControl} and consequently {@link controlStateChange} if 0.
+     * If {@link lpMode} is set to {@link LaunchpadMode.EDITOR}, {@link paintNote} is called.
+     * @param note - The note of the released button.
+     * @private
+     */
     private onLaunchpadControlRelease(note: ControlRowNote): void {
         switch (note) {
             case ControlRowNote.MIXER:
@@ -652,6 +689,12 @@ class Manager {
         }
     }
 
+    /**
+     * Event listener run when one of the right side buttons on the {@link launchpad} is pressed.
+     * Behaviour heavily dependent on {@link lpMode}.
+     * @param note - The note of the pressed button.
+     * @private
+     */
     private onLaunchpadSelectorPress(note: SelectorColNote): void {
         if (this.lpMode === LaunchpadMode.LAYOUT || this.lpMode === LaunchpadMode.PREVIEW) {
             this.switchSelectedPage((note - 9) / 10);
@@ -664,12 +707,24 @@ class Manager {
         }
     }
 
+    /**
+     * Event listener run when one of the right side buttons on the {@link launchpad} is released.
+     * Calls {@link paintNote} if {@link lpMode} is set to {@link LaunchpadMode.EDITOR}.
+     * @param note - The note of the pressed button.
+     * @private
+     */
     private onLaunchpadSelectorRelease(note: SelectorColNote): void {
         if (this.lpMode === LaunchpadMode.EDITOR) {
             this.paintNote(note);
         }
     }
 
+    /**
+     * Event listener run when one of the central pad buttons on the {@link launchpad} is pressed.
+     * Behaviour heavily dependent {@link lpMode}.
+     * @param note - The note of the pressed button.
+     * @private
+     */
     private onLaunchpadPadPress(note: number): void {
         if (this.lpMode === LaunchpadMode.LAYOUT) {
             if (note === this.selectedPadNum) {
@@ -693,6 +748,13 @@ class Manager {
         }
     }
 
+    /**
+     * Event listener run when one of the central pad buttons on the {@link launchpad} is released.
+     * Calls {@link paintNote} if permitted and {@link lpMode} is set to {@link LaunchpadMode.EDITOR}.
+     * Resets the value of {@link padStateChange}.
+     * @param note - The note of the pressed button.
+     * @private
+     */
     private onLaunchpadPadRelease(note: number): void {
         if (this.lpMode === LaunchpadMode.EDITOR && !this.padStateChange) {
             this.paintNote(note);
@@ -700,6 +762,12 @@ class Manager {
         this.padStateChange = false;
     }
 
+    /**
+     * Plays the animation corresponding to the given {@link note} value on the {@link selectedPage current page} to the {@link launchpad}.
+     * Assumes {@link lpMode} is set to {@link LaunchpadMode.PREVIEW}.
+     * @param note - The note of the animation to play.
+     * @private
+     */
     private playAnimation(note: number): void {
         let animation = this.selectedPage.getAnimation(...Launchpad.posFromSessionNote(note));
         let timestamp = 0;
@@ -712,6 +780,12 @@ class Manager {
         }
     }
 
+    /**
+     * Shifts the {@link selectedPadNum currently selected pad} by the {@link vector given vector}.
+     * @param vector - The vector to shift by.
+     * @throws {@link RangeError} - Thrown if the destination doesn't exist on the pad.
+     * @private
+     */
     private shiftSelectedPad(vector: [number, number]): void {
         const newSelectedPad = Launchpad.addVectorOnPad(this.selectedPadNum, vector);
         if (Launchpad.onPad(newSelectedPad))
@@ -720,14 +794,41 @@ class Manager {
             throw RangeError("Invalid Vector!");
     }
 
+    /**
+     * Confirms whether a shift of the {@link selectedPadNum selected pad} by {@link vector} is valid.
+     * @param vector - The vector to shift by.
+     * @private
+     */
     private canShiftSelectedPad(vector: [number, number]): boolean {
         const newSelectedPad = Launchpad.addVectorOnPad(this.selectedPadNum, vector);
         return Launchpad.onPad(newSelectedPad);
     }
 
-
+    /**
+     * Updates the currently selected colour, {@link selectedPaletteColour} or {@link selectedSysexColour} dependent on {@link useSysex},
+     * to the given value - formatted as a 6-bit triplet.
+     * Also updates the colour previewed in {@link colourPicker}.
+     * @param colour - The new colour to use.
+     * @private
+     */
     private updateColour(colour: [number, number, number]): void;
+
+    /**
+     * Updates the currently selected colour, {@link selectedPaletteColour} or {@link selectedSysexColour} dependent on {@link useSysex},
+     * to the given value - formatted as an index into {@link Launchpad.PALETTE}.
+     * Also updates the colour previewed in {@link colourPicker}.
+     * @param colour - The new colour to use.
+     * @private
+     */
     private updateColour(colour: number): void;
+
+    /**
+     * Updates the currently selected colour, {@link selectedPaletteColour} or {@link selectedSysexColour} dependent on {@link useSysex},
+     * to the given value - formatted as a standard colour string.
+     * Also updates the colour previewed in {@link colourPicker}.
+     * @param colour - The new colour to use.
+     * @private
+     */
     private updateColour(colour: string): void;
     private updateColour(colour: string | number | [number, number, number]): void {
         if (typeof colour === "number") colour = Launchpad.PALETTE[colour];
@@ -743,37 +844,55 @@ class Manager {
         }
     }
 
-    private updateSysexCheckmark(value: boolean): void {
+    /**
+     * Sets {@link useSysex} to the given value,
+     * and uses {@link updateColour} to update the selected colour to the best approximate in the new colour mode.
+     * @param value - The new value for {@link useSysex}.
+     * @private
+     */
+    private setUseSysex(value: boolean): void {
         this.useSysex = value;
         this.updateColour(this.colourPicker.value);
     }
 
-    public loadFile(text: string): void {
-        let data = JSON.parse(text);
-        // page array
+    /**
+     * Loads a project formatted as a JSON string.
+     * @param json - JSON string holding project data
+     */
+    public loadJSON(json: string): void {
+        let data = JSON.parse(json);
         if (data instanceof Array) {
             let pages: LightShowPage[] = [];
+
+            // iterate over the pages
             for (const page of data) if (page instanceof Array) {
-                let anipage: Tuple<LightShowAnimation, 8>[] = [];
+                let generatedPage: Tuple<LightShowAnimation, 8>[] = [];
+
+                // iterate over the columns of the page
                 for (const col of page) if (col instanceof Array) {
-                    let column: LightShowAnimation[] = [];
+                    let generatedColumn: LightShowAnimation[] = [];
+
+                    // iterate over the individual animations of the page
                     for (const anim of col) if (anim instanceof Array) {
-                        let frames: LightShowFrame[] = [];
+                        let generatedFrames: LightShowFrame[] = [];
+
+                        // iterate over the frames of the animation
                         for (const frame of anim) if (frame instanceof Array && typeof frame[0] === "number") {
-                            frames.push(new LightShowFrame(...(frame as [number, ...LightShowAction[]])));
+                            generatedFrames.push(new LightShowFrame(...(frame as [number, ...LightShowAction[]])));
                         }
-                        column.push(new LightShowAnimation(...frames));
+                        generatedColumn.push(new LightShowAnimation(...generatedFrames));
                     }
-                    if (column.length == 8) {
-                        anipage.push(column as Tuple<LightShowAnimation, 8>);
+                    if (generatedColumn.length == 8) {
+                        generatedPage.push(generatedColumn as Tuple<LightShowAnimation, 8>);
                     }
                 }
-                if (anipage.length == 8) {
-                    pages.push(new LightShowPage(anipage as Tuple<Tuple<LightShowAnimation, 8>, 8>))
+                if (generatedPage.length == 8) {
+                    pages.push(new LightShowPage(generatedPage as Tuple<Tuple<LightShowAnimation, 8>, 8>))
                 }
             }
             if (pages.length === 8) {
                 this.lightShowPages = pages as Tuple<LightShowPage, 8>;
+                // if loading was successful, we update the displays
                 this.updateLaunchpadDisplay();
                 this.updateDisplayAnimationLayout();
                 this.updateFramePickers();
@@ -781,9 +900,14 @@ class Manager {
         }
     }
 
-    private updateFrameDelay(delay: number): void {
+    /**
+     * Sets the duration of the currently selected frame to the given value.
+     * @param duration - new frame duration in ms.
+     * @private
+     */
+    private setFrameDuration(duration: number): void {
         if (this.selectedFrame < this.selectedAnimation.frameCount) {
-            this.selectedAnimation.setFrameDuration(this.selectedFrame, delay);
+            this.selectedAnimation.setFrameDuration(this.selectedFrame, duration);
         }
     }
 }
