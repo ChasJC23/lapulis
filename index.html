@@ -46,7 +46,7 @@
     <br />
     <input style="font-size: 24pt" type="file" accept="application/json" onchange="
         const reader = new FileReader();
-        reader.onload = (evt) => manager.loadFile(evt.target.result);
+        reader.onload = (evt) => manager.loadJSON(evt.target.result);
         reader.readAsText(this.files[0]);
 ">
     <svg visibility="hidden" id="circle_button" width="80" height="80">

@@ -29,7 +29,7 @@ class LightShowAnimation {
     public getFrameDelta(start: number, stop: number): LightShowAction[];
     public getFrameDelta(start: number, stop?: number): LightShowAction[] {
         if (stop === undefined)
-            return this.frames[start] ?? [];
+            return this.frames[start] ?? new LightShowFrame(0);
         let state: Tuple<Tuple<Optional<LightShowAction>, 9>, 9> = constructTuple(9, () => constructTuple(9));
         for (let frameIndex = start + 1; frameIndex <= stop; frameIndex++) {
             for (let action of this.frames[frameIndex]) {
@@ -76,7 +76,7 @@ class LightShowAnimation {
             let frame = this.frames[start];
             return this.resolvePadAtFrame(note, frame);
         }
-        let result: Optional<LightShowAction>;
+        let result: Optional<LightShowAction> = undefined;
         for (let frameIndex = start + 1; frameIndex <= stop; frameIndex++) {
             const frame = this.frames[frameIndex];
             if (result)
