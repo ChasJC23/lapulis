@@ -202,11 +202,12 @@ class Manager {
                 action.transparent = true;
             }
         }
+        else
+            this.frameDelayPicker.value = this.selectedAnimation.getFrameDuration(frame).toString();
         this.previewDisplay.performActions(actions);
         if (this.lpMode === LaunchpadMode.EDITOR) {
             this.launchpad.performActions(actions);
         }
-        this.frameDelayPicker.value = this.selectedAnimation.getFrameDuration(frame).toString();
     }
 
     /**
